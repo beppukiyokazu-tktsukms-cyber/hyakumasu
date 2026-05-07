@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>百ます計算 — 正の数・負の数の加法</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+    background: #f4f2ed;
+    color: #1a1a1a;
+    min-height: 100vh;
+    padding: 1rem;
+  }
+
+  .container {
+    max-width: 680px;
+    margin: 0 auto;
+  }
+
+  .header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 0.75rem;
+    padding-top: 0.5rem;
+  }
+
+  .title { font-size: 20px; font-weight: 700; color: #26215C; }
+  .subtitle { font-size: 13px; color: #666; margin-top: 3px; }
+
+  .controls {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  select, button {
+    font-family: inherit;
+    font-size: 13px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    background: #fff;
+    color: #1a1a1a;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  select:hover, button:hover { background: #eee; }
+
+  button.primary {
+    background: #26215C;
+    color: #EEEDFE;
+    border-color: #26215C;
+    font-weight: 600;
+  }
+  button.primary:hover { background: #3C3489; }
+
+  .stats {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .stat {
+    background: #fff;
+    border: 1px solid #e0ddd5;
+    border-radius: 8px;
+    padding: 8px 16px;
+    flex: 1;
+    min-width: 70px;
+  }
+  .stat-label { font-size: 11px; color: #888; }
+  .stat-value { font-size: 22px; font-weight: 700; }
+  #timer-val { color: #185FA5; }
+  #score-val { color: #0F6E56; }
+  #wrong-val { color: #993C1D; }
+  #remain-val { color: #444; }
+
+  .grid-wrap { overflow-x: auto; }
+
+  table {
+    border-collapse: collapse;
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    min-width: 520px;
+  }
+
+  td, th {
+    border: 1px solid #ddd;
+    text-align: center;
+  }
+
+  th.corner {
+    width: 44px; height: 44px;
+    background: #26215C;
+    color: #CECBF6;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  th.col-header {
+    width: 50px; height: 44px;
+    font-size: 14px; font-weight: 600;
+    background: #EEEDFE;
+    color: #3C3489;
+  }
+
+  th.row-header {
+    width: 44px; height: 44px;
+    font-size: 14px; font-weight: 600;
+    background: #EEEDFE;
+    color: #3C3489;
+  }
+
+  td.cell { width: 50px; height: 44px; padding: 0; }
+
+  td.cell input {
+    width: 100%; height: 100%;
+    border: none;
+    background: transparent;
+    text-align: center;
+    font-size: 15px;
+    font-family: inherit;
+    color: #1a1a1a;
+    outline: none;
+    cursor: pointer;
+  }
+  td.cell input:focus { background: #E6F1FB; }
+  td.cell.correct { background: #EAF3DE; }
+  td.cell.correct input { color: #3B6D11; pointer-events: none; }
+  td.cell.wrong { background: #FCEBEB; }
+  td.cell.wrong input { color: #A32D2D; pointer-events: none; }
+
+  .complete-msg {
+    margin-top: 0.75rem;
+    padding: 14px 18px;
+    border-radius: 10px;
+    background: #EAF3DE;
+    color: #3B6D11;
+    font-size: 15px;
+    font-weight: 600;
+    display: none;
+    border: 1px solid #C0DD97;
+  }
+
+  .footer {
+    margin-top: 0.75rem;
+    font-size: 12px;
+    color: #999;
+  }
+
+  @media print {
+    body { background: #fff; padding: 0; }
+    .controls, .stats, .footer, .complete-msg, select, button { display: none !important; }
+    table { box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div>
+      <div class="title">百ます計算</div>
+      <div class="subtitle">正の数・負の数の加法　たて＋よこの答えを入力しよう</div>
+    </div>
+    <div class="controls">
+      <select id="range-sel">
+        <option value="easy">やさしい（−5〜5）</option>
+        <option value="normal" selected>ふつう（−9〜9）</option>
+        <option value="hard">むずかしい（−12〜12）</option>
+      </select>
+      <button class="primary" onclick="newGame()">新しい問題</button>
+      <button onclick="checkAll()">答え合わせ</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-label">時間</div><div class="stat-value" id="timer-val">0:00</div></div>
+    <div class="stat"><div class="stat-label">正解</div><div class="stat-value" id="score-val">0</div></div>
+    <div class="stat"><div class="stat-label">まちがい</div><div class="stat-value" id="wrong-val">0</div></div>
+    <div class="stat"><div class="stat-label">残り</div><div class="stat-value" id="remain-val">100</div></div>
+  </div>
+
+  <div class="grid-wrap">
+    <table id="grid"></table>
+  </div>
+
+  <div class="complete-msg" id="complete-msg"></div>
+  <div class="footer">Enter・Tabキーで次のマスへ移動　／　入力後にマスから離れると自動で正誤判定</div>
+</div>
+
+<script>
+const RANGES = { easy: 5, normal: 9, hard: 12 };
+let rows = [], cols = [], startTime, timerInterval, answered = 0, correct = 0, wrong = 0;
+
+function rand(range) {
+  return Math.floor(Math.random() * (range * 2 + 1)) - range;
+}
+
+function fmt(n) {
+  return n >= 0 ? '+' + n : String(n);
+}
+
+function newGame() {
+  const range = RANGES[document.getElementById('range-sel').value];
+  rows = Array.from({length: 10}, () => rand(range));
+  cols = Array.from({length: 10}, () => rand(range));
+  answered = correct = wrong = 0;
+  updateStats();
+  document.getElementById('complete-msg').style.display = 'none';
+  buildGrid();
+  clearInterval(timerInterval);
+  startTime = Date.now();
+  timerInterval = setInterval(updateTimer, 1000);
+  document.getElementById('timer-val').textContent = '0:00';
+  const first = document.querySelector('td.cell input');
+  if (first) first.focus();
+}
+
+function buildGrid() {
+  const tbl = document.getElementById('grid');
+  tbl.innerHTML = '';
+
+  const thead = document.createElement('tr');
+  const corner = document.createElement('th');
+  corner.className = 'corner';
+  corner.textContent = '+';
+  thead.appendChild(corner);
+  cols.forEach(c => {
+    const th = document.createElement('th');
+    th.className = 'col-header';
+    th.textContent = fmt(c);
+    thead.appendChild(th);
+  });
+  tbl.appendChild(thead);
+
+  rows.forEach((r, ri) => {
+    const tr = document.createElement('tr');
+    const rh = document.createElement('th');
+    rh.className = 'row-header';
+    rh.textContent = fmt(r);
+    tr.appendChild(rh);
+    cols.forEach((c, ci) => {
+      const td = document.createElement('td');
+      td.className = 'cell';
+      td.dataset.ri = ri;
+      td.dataset.ci = ci;
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.inputMode = 'numeric';
+      inp.autocomplete = 'off';
+      inp.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === 'Tab') {
+          e.preventDefault();
+          if (inp.value.trim() !== '') submitCell(inp, ri, ci);
+          const cells = Array.from(document.querySelectorAll('td.cell:not(.correct):not(.wrong) input'));
+          const idx = cells.indexOf(inp);
+          if (idx >= 0 && idx < cells.length - 1) cells[idx + 1].focus();
+        }
+      });
+      inp.addEventListener('blur', () => {
+        if (inp.value.trim() !== '') submitCell(inp, ri, ci);
+      });
+      td.appendChild(inp);
+      tr.appendChild(td);
+    });
+    tbl.appendChild(tr);
+  });
+}
+
+function submitCell(inp, ri, ci) {
+  const td = inp.parentElement;
+  if (td.classList.contains('correct') || td.classList.contains('wrong')) return;
+  const ans = parseInt(inp.value.trim());
+  const correct_ans = rows[ri] + cols[ci];
+  if (isNaN(ans)) return;
+  answered++;
+  if (ans === correct_ans) {
+    td.classList.add('correct');
+    correct++;
+  } else {
+    td.classList.add('wrong');
+    inp.value = correct_ans;
+    wrong++;
+  }
+  updateStats();
+  if (answered === 100) finish();
+}
+
+function checkAll() {
+  document.querySelectorAll('td.cell:not(.correct):not(.wrong) input').forEach(inp => {
+    const td = inp.parentElement;
+    const ri = parseInt(td.dataset.ri), ci = parseInt(td.dataset.ci);
+    if (inp.value.trim() !== '') {
+      submitCell(inp, ri, ci);
+    } else {
+      const correct_ans = rows[ri] + cols[ci];
+      inp.value = correct_ans;
+      td.classList.add('wrong');
+      answered++;
+      wrong++;
+    }
+  });
+  updateStats();
+  if (answered >= 100) finish();
+}
+
+function updateStats() {
+  document.getElementById('score-val').textContent = correct;
+  document.getElementById('wrong-val').textContent = wrong;
+  document.getElementById('remain-val').textContent = 100 - answered;
+}
+
+function updateTimer() {
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  const m = Math.floor(elapsed / 60), s = elapsed % 60;
+  document.getElementById('timer-val').textContent = m + ':' + String(s).padStart(2, '0');
+}
+
+function finish() {
+  clearInterval(timerInterval);
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  const m = Math.floor(elapsed / 60), s = elapsed % 60;
+  const msg = document.getElementById('complete-msg');
+  msg.style.display = 'block';
+  let comment = correct === 100 ? '🎉 全問正解！すばらしい！' : correct >= 80 ? '👍 よくできました！' : '📖 もう一度チャレンジしてみよう！';
+  msg.textContent = `完了！ ${m}分${s}秒 ／ 正解 ${correct}問 ／ まちがい ${wrong}問　${comment}`;
+}
+
+newGame();
+</script>
+</body>
+</html>
