@@ -261,10 +261,16 @@ function buildGrid() {
       inp.addEventListener('keydown', e => {
         if (e.key === 'Enter' || e.key === 'Tab') {
           e.preventDefault();
+          const allInputs = Array.from(document.querySelectorAll('td.cell input'));
+          const currentIdx = allInputs.indexOf(inp);
           if (inp.value.trim() !== '') submitCell(inp, ri, ci);
-          const cells = Array.from(document.querySelectorAll('td.cell:not(.correct):not(.wrong) input'));
-          const idx = cells.indexOf(inp);
-          if (idx >= 0 && idx < cells.length - 1) cells[idx + 1].focus();
+          for (let i = currentIdx + 1; i < allInputs.length; i++) {
+            const td = allInputs[i].parentElement;
+            if (!td.classList.contains('correct') && !td.classList.contains('wrong')) {
+              allInputs[i].focus();
+              break;
+            }
+          }
         }
       });
       inp.addEventListener('blur', () => {
