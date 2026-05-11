@@ -158,6 +158,45 @@
     color: #999;
   }
 
+  /* スタートオーバーレイ */
+  .overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(244, 242, 237, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    z-index: 10;
+  }
+  .overlay.hidden { display: none; }
+
+  .start-btn {
+    font-family: inherit;
+    font-size: 22px;
+    font-weight: 700;
+    padding: 16px 48px;
+    border-radius: 12px;
+    border: none;
+    background: #26215C;
+    color: #EEEDFE;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(38,33,92,0.25);
+    transition: background 0.15s, transform 0.1s;
+    letter-spacing: 0.05em;
+  }
+  .start-btn:hover { background: #3C3489; transform: scale(1.03); }
+
+  .grid-outer {
+    position: relative;
+  }
+
+  /* 未スタート時は入力を無効化 */
+  td.cell input:disabled {
+    cursor: default;
+    color: transparent;
+  }
+
   @media print {
     body { background: #fff; padding: 0; }
     .controls, .stats, .footer, .complete-msg, select, button { display: none !important; }
@@ -190,8 +229,13 @@
     <div class="stat"><div class="stat-label">残り</div><div class="stat-value" id="remain-val">100</div></div>
   </div>
 
-  <div class="grid-wrap">
-    <table id="grid"></table>
+  <div class="grid-outer">
+    <div class="overlay" id="overlay">
+      <button class="start-btn" onclick="startGame()">スタート</button>
+    </div>
+    <div class="grid-wrap">
+      <table id="grid"></table>
+    </div>
   </div>
 
   <div class="complete-msg" id="complete-msg"></div>
@@ -201,6 +245,7 @@
 <script>
 const RANGES = { easy: 5, normal: 9, hard: 12 };
 let rows = [], cols = [], startTime, timerInterval, answered = 0, correct = 0, wrong = 0;
+let gameStarted = false;
 
 function rand(range) {
   return Math.floor(Math.random() * (range * 2 + 1)) - range;
@@ -215,13 +260,28 @@ function newGame() {
   rows = Array.from({length: 10}, () => rand(range));
   cols = Array.from({length: 10}, () => rand(range));
   answered = correct = wrong = 0;
+  gameStarted = false;
   updateStats();
   document.getElementById('complete-msg').style.display = 'none';
+  document.getElementById('timer-val').textContent = '0:00';
+  clearInterval(timerInterval);
   buildGrid();
+  // オーバーレイを表示してスタート待ち
+  document.getElementById('overlay').classList.remove('hidden');
+  // 入力を無効化
+  document.querySelectorAll('td.cell input').forEach(inp => inp.disabled = true);
+}
+
+function startGame() {
+  gameStarted = true;
+  document.getElementById('overlay').classList.add('hidden');
+  // 入力を有効化
+  document.querySelectorAll('td.cell input').forEach(inp => inp.disabled = false);
+  // タイマー開始
   clearInterval(timerInterval);
   startTime = Date.now();
   timerInterval = setInterval(updateTimer, 1000);
-  document.getElementById('timer-val').textContent = '0:00';
+  // 最初のマスにフォーカス
   const first = document.querySelector('td.cell input');
   if (first) first.focus();
 }
@@ -258,7 +318,9 @@ function buildGrid() {
       inp.type = 'text';
       inp.inputMode = 'numeric';
       inp.autocomplete = 'off';
+      inp.disabled = true;
       inp.addEventListener('keydown', e => {
+        if (!gameStarted) return;
         if (e.key === 'Enter' || e.key === 'Tab') {
           e.preventDefault();
           const allInputs = Array.from(document.querySelectorAll('td.cell input'));
@@ -274,6 +336,7 @@ function buildGrid() {
         }
       });
       inp.addEventListener('blur', () => {
+        if (!gameStarted) return;
         if (inp.value.trim() !== '') submitCell(inp, ri, ci);
       });
       td.appendChild(inp);
@@ -303,6 +366,7 @@ function submitCell(inp, ri, ci) {
 }
 
 function checkAll() {
+  if (!gameStarted) return;
   document.querySelectorAll('td.cell:not(.correct):not(.wrong) input').forEach(inp => {
     const td = inp.parentElement;
     const ri = parseInt(td.dataset.ri), ci = parseInt(td.dataset.ci);
@@ -334,6 +398,7 @@ function updateTimer() {
 
 function finish() {
   clearInterval(timerInterval);
+  gameStarted = false;
   const elapsed = Math.floor((Date.now() - startTime) / 1000);
   const m = Math.floor(elapsed / 60), s = elapsed % 60;
   const msg = document.getElementById('complete-msg');
@@ -346,4 +411,3 @@ newGame();
 </script>
 </body>
 </html>
-
